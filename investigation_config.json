@@ -1,0 +1,30 @@
+{
+  "target_channels": [
+    "AVIAKASSAANDIJON1",
+    "TravelinKorea1",
+    "korea_travel",
+    "korea_travels"
+  ],
+  "keywords": [
+    "price",
+    "buy",
+    "sell",
+    "delivery",
+    "btc",
+    "crypto",
+    "grams",
+    "kush",
+    "white",
+    "snow",
+    "ice",
+    "travel",
+    "korea",
+    "telegram",
+    "users",
+    "internet",
+    "censoreship"
+  ],
+  "scan_history_limit": 100,
+  "risk_threshold": "MEDIUM",
+  "crawler_mode": false
+}

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evidence Locker - Telegram Investigator</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        aside {
+            width: 250px;
+            background-color: var(--card-bg);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-right: 1px solid #334155;
+        }
+
+        aside h1 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+
+        aside a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            padding: 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        aside a:hover {
+            background-color: #334155;
+            color: var(--text-primary);
+        }
+
+        aside a.active {
+            background-color: #334155;
+            color: var(--text-primary);
+            font-weight: bold;
+        }
+
+        main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            background-color: #0f172a;
+            color: var(--accent);
+        }
+
+        .risk-HIGH {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .risk-MEDIUM {
+            color: var(--warning);
+            font-weight: bold;
+        }
+
+        .risk-LOW {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+    <aside>
+        <h1>🔎 Investigator</h1>
+        <a href="/">Dashboard</a>
+        <a href="/evidence.html" class="active">Evidence Locker</a>
+        <a href="/chat.html">AI Chat</a>
+        <a href="/config.html">Configuration</a>
+    </aside>
+    <main>
+        <h2>📂 Evidence Locker</h2>
+        <button onclick="loadEvidence()"
+            style="padding: 10px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer;">Refresh
+            Data</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Risk</th>
+                    <th>Channel</th>
+                    <th>Summary</th>
+                    <th>Keywords</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="5">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </main>
+    <script>
+        loadEvidence();
+        async function loadEvidence() {
+            try {
+                const res = await fetch('/api/evidence');
+                const data = await res.json();
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">No evidence found yet.</td></tr>';
+                    return;
+                }
+
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    const riskClass = `risk-${item.ai_analysis.risk_level}`;
+                    row.innerHTML = `
+                        <td>${new Date(item.timestamp).toLocaleString()}</td>
+                        <td class="${riskClass}">${item.ai_analysis.risk_level}</td>
+                        <td>${item.channel_name || item.channel_id}</td>
+                        <td>${item.ai_analysis.summary}</td>
+                        <td>${item.keywords_found.join(', ')}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (e) {
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="5">Error loading data.</td></tr>';
+            }
+        }
+    </script>
+</body>
+
+</html>

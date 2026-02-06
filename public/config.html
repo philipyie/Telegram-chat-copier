@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Configuration - Telegram Investigator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="p-4 bg-light">
+
+    <div class="container" style="max-width: 800px;">
+        <div class="d-flex justify-content-between mb-4">
+            <h1>⚙ Configuration</h1>
+            <a href="/" class="btn btn-outline-secondary">← Back to Dashboard</a>
+        </div>
+
+        <div class="card p-4 mb-4">
+            <h4>🔎 Search & Add Channels</h4>
+            <div class="input-group mb-3">
+                <input type="text" id="searchQuery" class="form-control" placeholder="Enter topic (e.g. Crypto, News)">
+                <button class="btn btn-primary" onclick="searchChats()">Search</button>
+            </div>
+            <div id="searchResults" class="list-group">
+                <!-- Results will appear here -->
+            </div>
+        </div>
+
+        <div class="card p-4 mb-4">
+            <h4>🧠 Active Targets & Analysis</h4>
+            <div class="input-group input-group-sm mb-3" style="width: 250px;">
+                <span class="input-group-text">Analysis Limit</span>
+                <input type="number" id="analysisLimit" class="form-control" value="1000" min="100" max="10000">
+            </div>
+            <div id="activeTargetsList" class="list-group mb-3">
+                <!-- Targets from config will be rendered here -->
+            </div>
+            <div id="analysisResult" class="alert alert-info d-none">
+                <h5 class="alert-heading">Result</h5>
+                <div id="analysisContent"></div>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <form id="configForm">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Target Channels (Usernames or Links)</label>
+                    <div class="form-text mb-2">One per line</div>
+                    <textarea id="targetChannels" class="form-control" rows="5"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Suspicious Keywords</label>
+                    <div class="form-text mb-2">Comma separated</div>
+                    <input type="text" id="keywords" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">AI Investigation Profile (System Prompt)</label>
+                    <div class="form-text mb-2">Define who the AI is and what it should look for.</div>
+                    <textarea id="systemPrompt" class="form-control" rows="4"
+                        placeholder="You are a digital forensics analyst..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <div class="p-3 border rounded bg-white d-flex justify-content-between align-items-center">
+                        <div>
+                            <label class="form-check-label fw-bold" for="crawlerMode">
+                                🕷 Crawler Mode (Auto-Discovery)
+                            </label>
+                            <div class="form-text mt-1">
+                                <strong>Active:</strong> Scans messages for invite links.<br>
+                                <strong>Global:</strong> Periodically searches Telegram directory for keywords.<br>
+                                <em>(Auto-Joins High Risk matches)</em>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch ms-3">
+                            <input class="form-check-input" type="checkbox" id="crawlerMode"
+                                style="transform: scale(1.5);">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">AI Provider</label>
+                        <select id="aiProvider" class="form-select" onchange="toggleApiKey()">
+                            <option value="local">Local (Ollama) - Free/Uncensored</option>
+                            <option value="groq">Cloud (Groq) - Fast/Free Tier</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6" id="apiKeyContainer" style="display: none;">
+                        <label class="form-label fw-bold">Groq API Key</label>
+                        <input type="password" id="groqApiKey" class="form-control" placeholder="gsk_...">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Scan History Limit</label>
+                        <input type="number" id="historyLimit" class="form-control">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Risk Threshold</label>
+                        <select id="riskThreshold" class="form-select">
+                            <option value="LOW">LOW</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="HIGH">HIGH</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Save Configuration</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Search Functionality
+        async function searchChats() {
+            const query = document.getElementById('searchQuery').value;
+            const btn = document.querySelector('button[onclick="searchChats()"]');
+            const resultsDiv = document.getElementById('searchResults');
+
+            if (!query) return;
+
+            btn.disabled = true;
+            btn.textContent = "Searching...";
+            resultsDiv.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || errData.msg || "Search failed");
+                }
+                const results = await res.json();
+
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="text-muted p-2">No results found.</div>';
+                } else {
+                    results.forEach(chat => {
+                        const item = document.createElement('div');
+                        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        item.innerHTML = `
+                            <div>
+                                <strong>${chat.title}</strong>
+                                <br>
+                                <small class="text-muted">@${chat.username || 'private'} • ID: ${chat.id}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-success" onclick="addChannel('${chat.username}')" ${!chat.username ? 'disabled' : ''}>
+                                + Add
+                            </button>
+                        `;
+                        resultsDiv.appendChild(item);
+                    });
+                }
+
+            } catch (e) {
+                alert("Error searching: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Search";
+            }
+        }
+
+        function addChannel(username) {
+            if (!username) return;
+            const textarea = document.getElementById('targetChannels');
+            const current = textarea.value.split('\n').map(s => s.trim());
+
+            if (!current.includes(username)) {
+                if (textarea.value.trim()) textarea.value += '\n';
+                textarea.value += username;
+                // Highlight change
+                textarea.style.borderColor = "#198754";
+                setTimeout(() => textarea.style.borderColor = "", 1000);
+
+                // Update the visual list immediately
+                updateTargetsList();
+            } else {
+                alert("Already in list!");
+            }
+        }
+
+        // Live update listener
+        document.getElementById('targetChannels').addEventListener('input', updateTargetsList);
+
+        function updateTargetsList() {
+            const textarea = document.getElementById('targetChannels');
+            const targets = textarea.value.split('\n').map(s => s.trim()).filter(s => s);
+            renderTargets(targets);
+        }
+
+        // Render Active Targets
+        function renderTargets(targets) {
+            const list = document.getElementById('activeTargetsList');
+            list.innerHTML = '';
+
+            if (!targets || targets.length === 0) {
+                list.innerHTML = '<div class="text-muted">No targets configured. Search and add some!</div>';
+                return;
+            }
+
+            targets.forEach(target => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                item.innerHTML = `
+                    <strong>@${target}</strong>
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-info text-white" onclick="deepAnalyze('${target}')">
+                            🧠 Analyze
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeTarget('${target}')">
+                            🗑
+                        </button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        async function removeTarget(target) {
+            if (!confirm(`Are you sure you want to remove @${target}?`)) return;
+
+            // 1. Get current config
+            const res = await fetch('/api/config');
+            const data = await res.json();
+
+            // 2. Filter out target
+            const updatedTargets = (data.target_channels || []).filter(t => t !== target);
+            data.target_channels = updatedTargets;
+
+            // 3. Save back
+            await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            // 4. Reload UI
+            load();
+        }
+
+        async function deepAnalyze(target) {
+            const limit = parseInt(document.getElementById('analysisLimit').value) || 1000;
+            const resultDiv = document.getElementById('analysisResult');
+            const contentDiv = document.getElementById('analysisContent');
+
+            resultDiv.classList.remove('d-none');
+            resultDiv.className = 'alert alert-warning';
+            contentDiv.innerHTML = `⏳ Analyzing last ${limit} messages... (Fetching & AI Processing)...`;
+
+            try {
+                const res = await fetch('/api/analyze-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target, limit })
+                });
+
+                if (!res.ok) throw new Error((await res.json()).error || "Analysis failed");
+                const data = await res.json();
+
+                resultDiv.className = 'alert alert-success';
+
+                const topicsHtml = (data.topics || []).map(t => `<span class="badge bg-primary me-1">${t}</span>`).join('');
+                const wordsHtml = (data.topWords || []).slice(0, 10).map(w => `<span class="badge bg-secondary me-1">${w.word} (${w.count})</span>`).join('');
+
+                contentDiv.innerHTML = `
+                    <h5>Target: @${data.target}</h5>
+                    <p><strong>Sentiment:</strong> ${data.sentiment || 'Unknown'}</p>
+                    <p><strong>Summary:</strong> ${data.summary || 'No summary available.'}</p>
+                    <hr>
+                    <h6>Keywords discussed:</h6>
+                    <div class="mb-2">${topicsHtml}</div>
+                    
+                    <h6>Top frequent words:</h6>
+                    <div>${wordsHtml}</div>
+                `;
+
+            } catch (e) {
+                resultDiv.className = 'alert alert-danger';
+                contentDiv.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        // Toggle API Key visibility
+        function toggleApiKey() {
+            const provider = document.getElementById('aiProvider').value;
+            const container = document.getElementById('apiKeyContainer');
+            container.style.display = provider === 'groq' ? 'block' : 'none';
+        }
+
+        // Load Config
+        async function load() {
+            const res = await fetch('/api/config');
+            const data = await res.json();
+
+            document.getElementById('targetChannels').value = (data.target_channels || []).join('\n');
+            renderTargets(data.target_channels || []);
+            document.getElementById('keywords').value = (data.keywords || []).join(', ');
+            document.getElementById('systemPrompt').value = data.system_prompt || "You are a digital forensics analyst...";
+            document.getElementById('historyLimit').value = data.scan_history_limit || 100;
+            document.getElementById('riskThreshold').value = data.risk_threshold || 'MEDIUM';
+            document.getElementById('crawlerMode').checked = data.crawler_mode || false;
+
+            // AI Provider Settings
+            document.getElementById('aiProvider').value = data.ai_provider || 'local';
+            document.getElementById('groqApiKey').value = data.groq_api_key || '';
+            toggleApiKey(); // Set initial state
+        }
+
+        // Save Config
+        document.getElementById('configForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const config = {
+                target_channels: document.getElementById('targetChannels').value.split('\n').map(s => s.trim()).filter(s => s),
+                keywords: document.getElementById('keywords').value.split(',').map(s => s.trim()).filter(s => s),
+                scan_history_limit: parseInt(document.getElementById('historyLimit').value),
+                risk_threshold: document.getElementById('riskThreshold').value,
+                crawler_mode: document.getElementById('crawlerMode').checked,
+                ai_provider: document.getElementById('aiProvider').value,
+                groq_api_key: document.getElementById('groqApiKey').value
+            };
+
+            await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+
+            alert('Configuration Saved!');
+        };
+
+        load();
+    </script>
+</body>
+
+</html>

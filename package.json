@@ -1,0 +1,20 @@
+{
+  "name": "telegram-chat-copier",
+  "version": "1.0.0",
+  "description": "Telegram Chat Copier with Google AI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "report": "node generate_report.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-basic-auth": "^1.2.1",
+    "input": "^1.0.1",
+    "socket.io": "^4.7.5",
+    "telegram": "^2.22.2"
+  }
+}
