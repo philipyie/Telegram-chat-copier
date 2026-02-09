@@ -11,14 +11,14 @@ async function callAI(messages, jsonMode = false) {
     delete require.cache[require.resolve("./investigation_config.json")];
     const currentConfig = require("./investigation_config.json");
 
-    const provider = currentConfig.ai_provider || process.env.AI_PROVIDER || "local";
+    const provider = process.env.AI_PROVIDER || currentConfig.ai_provider || "local";
     let url, headers, body;
 
     if (provider === "groq") {
         url = "https://api.groq.com/openai/v1/chat/completions";
         headers = {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${currentConfig.groq_api_key || process.env.GROQ_API_KEY}`
+            "Authorization": `Bearer ${process.env.GROQ_API_KEY || currentConfig.groq_api_key}`
         };
         body = {
             model: "llama-3.1-8b-instant", // Latest fast model (replaced legacy 8b)
