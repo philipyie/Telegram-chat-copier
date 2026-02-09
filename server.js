@@ -54,11 +54,20 @@ app.post("/api/stop", async (req, res) => {
 
 // 3. Config
 app.get("/api/config", (req, res) => {
+    let config = {};
     if (fs.existsSync(CONFIG_FILE)) {
-        res.json(JSON.parse(fs.readFileSync(CONFIG_FILE)));
-    } else {
-        res.json({});
+        try {
+            config = JSON.parse(fs.readFileSync(CONFIG_FILE));
+        } catch (e) {
+            console.error("Error reading config file:", e);
+        }
     }
+
+    // Overlay Environment Variables (Cloud Hosting Support)
+    if (process.env.AI_PROVIDER) config.ai_provider = process.env.AI_PROVIDER;
+    if (process.env.GROQ_API_KEY) config.groq_api_key = process.env.GROQ_API_KEY;
+
+    res.json(config);
 });
 
 app.post("/api/config", (req, res) => {
